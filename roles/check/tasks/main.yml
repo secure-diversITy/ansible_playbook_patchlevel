@@ -1,0 +1,34 @@
+---
+- name: update pkg cache
+  become: yes
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: check and install pre-reqs
+  become: yes
+  apt:
+    name: apt-show-versions
+
+- name: check upgradeable pkgs
+  shell: apt-show-versions -u
+  register: pkglist
+
+- name: check patchlevel
+  shell: "lsb_release -d | sed -e 's/.*\\([0-9].\\.[0-9].\\.[0-9].\\).*/\\1/g'| tr -d ' '"
+  register: srvpatchlevel
+
+- name: check support state
+  shell: ubuntu-support-status --show-unsupported
+  register: supportstate
+
+- name: print updates
+  debug: msg="{{pkglist.stdout_lines}}"
+
+- name: print support state
+  debug: msg="{{supportstate.stdout_lines}}"
+
+- name: error on srvpatchlevel
+  fail: 
+    msg: "Server patchlevel: {{ srvpatchlevel.stdout }} expected is: {{ patchlevel }}"
+  when: srvpatchlevel.stdout != patchlevel
